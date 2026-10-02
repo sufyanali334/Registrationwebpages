@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Record System</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif}
+body{min-height:100vh;background:linear-gradient(135deg,#6a11cb,#2575fc 50%,#00c9a7);padding:20px;color:#333}
+.wrap{max-width:1000px;margin:auto}
+h1{color:#fff;text-align:center;margin:10px 0 25px;font-size:2rem;text-shadow:0 2px 8px rgba(0,0,0,.3)}
+.card{background:#fff;border-radius:16px;padding:22px;margin-bottom:20px;box-shadow:0 8px 25px rgba(0,0,0,.2)}
+.card h2{color:#6a11cb;margin-bottom:15px;font-size:1.2rem}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+input{padding:12px;border:2px solid #e0e0f0;border-radius:10px;font-size:1rem;outline:none;transition:.2s;width:100%}
+input:focus{border-color:#2575fc;box-shadow:0 0 0 3px rgba(37,117,252,.2)}
+button{border:none;padding:12px 18px;border-radius:10px;color:#fff;font-size:1rem;cursor:pointer;transition:.2s;font-weight:600}
+button:hover{transform:translateY(-2px);opacity:.9}
+.add{background:linear-gradient(90deg,#ff512f,#f09819)}
+.copy{background:linear-gradient(90deg,#11998e,#38ef7d)}
+.clear{background:linear-gradient(90deg,#cb2d3e,#ef473a)}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}
+.bar input{flex:1;min-width:180px}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{background:linear-gradient(90deg,#6a11cb,#2575fc);color:#fff;padding:12px;text-align:left}
+td{padding:11px 12px;border-bottom:1px solid #eee}
+tr:nth-child(even){background:#f5f3ff}
+tr:hover td{background:#e8f0ff}
+.del{background:#ef473a;padding:6px 12px;font-size:.85rem}
+.empty{text-align:center;padding:20px;color:#888}
+#msg{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:12px 24px;border-radius:30px;opacity:0;transition:.3s;pointer-events:none}
+#msg.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎓 Student Record System</h1>
+
+  <div class="card">
+    <h2>➕ Naya Student Add Karein</h2>
+    <form id="f">
+      <input id="name" placeholder="Student ka naam" required>
+      <input id="roll" placeholder="Roll No" required>
+      <input id="cls" placeholder="Class" required>
+      <input id="phone" placeholder="Phone / Parent No">
+      <input id="marks" type="number" placeholder="Marks (optional)">
+      <button class="add" type="submit">Add Student</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>📋 Students ki List (<span id="count">0</span>)</h2>
+    <div class="bar">
+      <input id="search" placeholder="🔍 Naam, roll no ya class se search karein">
+      <button class="copy" id="copyBtn">📄 Copy Records</button>
+      <button class="clear" id="clearBtn">🗑 Sab Delete</button>
+    </div>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>#</th><th>Naam</th><th>Roll No</th><th>Class</th><th>Phone</th><th>Marks</th><th>Action</th></tr></thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div id="msg"></div>
+
+<script>
+let data = [];
+try { data = JSON.parse(localStorage.getItem('students')) || []; } catch(e) {}
+const $ = id => document.getElementById(id);
+
+function save(){ try{ localStorage.setItem('students', JSON.stringify(data)); }catch(e){} }
+function toast(t){ const m=$('msg'); m.textContent=t; m.classList.add('show'); setTimeout(()=>m.classList.remove('show'),1800); }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function render(){
+  const q = $('search').value.toLowerCase();
+  const rows = data.map((s,i)=>({s,i})).filter(({s})=>(s.name+s.roll+s.cls).toLowerCase().includes(q));
+  $('count').textContent = data.length;
+  $('body').innerHTML = rows.length ? rows.map(({s,i},n)=>
+    `<tr><td>${n+1}</td><td>${esc(s.name)}</td><td>${esc(s.roll)}</td><td>${esc(s.cls)}</td><td>${esc(s.phone)}</td><td>${esc(s.marks)}</td>
+    <td><button class="del" onclick="del(${i})">Delete</button></td></tr>`).join('')
+    : '<tr><td colspan="7" class="empty">Koi record nahi mila</td></tr>';
+}
+
+$('f').addEventListener('submit', e=>{
+  e.preventDefault();
+  data.push({name:$('name').value.trim(), roll:$('roll').value.trim(), cls:$('cls').value.trim(), phone:$('phone').value.trim(), marks:$('marks').value});
+  save(); render(); e.target.reset(); toast('✅ Student add ho gaya');
+});
+
+function del(i){ if(confirm('Is student ko delete karein?')){ data.splice(i,1); save(); render(); } }
+
+$('clearBtn').onclick = ()=>{ if(data.length && confirm('Sara record delete ho jayega. Pakka?')){ data=[]; save(); render(); } };
+$('search').oninput = render;
+
+$('copyBtn').onclick = ()=>{
+  if(!data.length) return toast('Copy karne ke liye koi record nahi');
+  const text = ['Naam\tRoll No\tClass\tPhone\tMarks', ...data.map(s=>[s.name,s.roll,s.cls,s.phone,s.marks].join('\t'))].join('\n');
+  const done = ()=>toast('📄 Records copy ho gaye');
+  if(navigator.clipboard){ navigator.clipboard.writeText(text).then(done).catch(fallback); } else fallback();
+  function fallback(){ const t=document.createElement('textarea'); t.value=text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); done(); }
+};
+
+render();
+</script>
+</body>
+</html>
